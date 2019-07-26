@@ -56,6 +56,7 @@ public class Auth0 {
     private static final String DOT_AUTH0_DOT_COM = ".auth0.com";
 
     private final String clientId;
+    private final String customAuthorizeUrl;
     private final HttpUrl domainUrl;
     private final HttpUrl configurationUrl;
     private Telemetry telemetry;
@@ -74,7 +75,11 @@ public class Auth0 {
      * @param context a valid context
      */
     public Auth0(@NonNull Context context) {
-        this(getResourceFromContext(context, "com_auth0_client_id"), getResourceFromContext(context, "com_auth0_domain"));
+        this(context, null);
+    }
+
+    public Auth0(@NonNull Context context, @Nullable String authorizeUrl) {
+        this(getResourceFromContext(context, "com_auth0_client_id"), getResourceFromContext(context, "com_auth0_domain"), authorizeUrl);
     }
 
     /**
@@ -87,6 +92,10 @@ public class Auth0 {
         this(clientId, domain, null);
     }
 
+    public Auth0(@NonNull String clientId, @NonNull String domain, @Nullable String authorizeUrl) {
+        this(clientId, domain, null, authorizeUrl);
+    }
+
     /**
      * Creates a new object using clientId, domain and configuration domain.
      * Useful when using a on-premise auth0 server that is not in the public cloud,
@@ -96,12 +105,24 @@ public class Auth0 {
      * @param domain              of your Auth0 account
      * @param configurationDomain where Auth0's configuration will be fetched. By default is Auth0 public cloud
      */
-    public Auth0(@NonNull String clientId, @NonNull String domain, @Nullable String configurationDomain) {
+    public Auth0(@NonNull String clientId, @NonNull String domain, @Nullable String configurationDomain, @Nullable String authorizeUrl) {
         this.clientId = clientId;
         this.domainUrl = ensureValidUrl(domain);
         if (this.domainUrl == null) {
             throw new IllegalArgumentException(String.format("Invalid domain url: '%s'", domain));
         }
+
+        if (authorizeUrl != null) {
+            if (ensureValidUrl(authorizeUrl) == null) {
+                this.customAuthorizeUrl = null;
+                throw new IllegalArgumentException(String.format("Invalid custom authorize url: '%s'", authorizeUrl));
+            } else {
+                this.customAuthorizeUrl = authorizeUrl;
+            }
+        } else {
+            this.customAuthorizeUrl = null;
+        }
+
         this.configurationUrl = resolveConfiguration(configurationDomain, this.domainUrl);
         this.telemetry = new Telemetry(BuildConfig.LIBRARY_NAME, BuildConfig.VERSION_NAME);
     }
@@ -133,10 +154,14 @@ public class Auth0 {
      * @return Url to call to perform the web flow of OAuth
      */
     public String getAuthorizeUrl() {
-        return domainUrl.newBuilder()
-                .addEncodedPathSegment("authorize")
-                .build()
-                .toString();
+        if (customAuthorizeUrl != null) {
+            return customAuthorizeUrl;
+        } else {
+            return domainUrl.newBuilder()
+                    .addEncodedPathSegment("authorize")
+                    .build()
+                    .toString();
+        }
     }
 
     /**
