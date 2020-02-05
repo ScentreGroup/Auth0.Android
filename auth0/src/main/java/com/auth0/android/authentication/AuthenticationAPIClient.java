@@ -48,14 +48,17 @@ import com.auth0.android.result.Delegation;
 import com.auth0.android.result.UserProfile;
 import com.auth0.android.util.Telemetry;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.squareup.okhttp.HttpUrl;
 import com.squareup.okhttp.OkHttpClient;
 
+import java.security.PublicKey;
 import java.util.Map;
 
 import static com.auth0.android.authentication.ParameterBuilder.GRANT_TYPE_AUTHORIZATION_CODE;
 import static com.auth0.android.authentication.ParameterBuilder.GRANT_TYPE_MFA_OTP;
 import static com.auth0.android.authentication.ParameterBuilder.GRANT_TYPE_PASSWORD;
+import static com.auth0.android.authentication.ParameterBuilder.GRANT_TYPE_PASSWORDLESS_OTP;
 import static com.auth0.android.authentication.ParameterBuilder.GRANT_TYPE_PASSWORD_REALM;
 import static com.auth0.android.authentication.ParameterBuilder.ID_TOKEN_KEY;
 import static com.auth0.android.authentication.ParameterBuilder.SCOPE_OPENID;
@@ -98,10 +101,11 @@ public class AuthenticationAPIClient {
     private static final String USER_INFO_PATH = "userinfo";
     private static final String REVOKE_PATH = "revoke";
     private static final String HEADER_AUTHORIZATION = "Authorization";
+    private static final String WELL_KNOWN_PATH = ".well-known";
+    private static final String JWKS_FILE_PATH = "jwks.json";
 
     private final Auth0 auth0;
-    @VisibleForTesting
-    final OkHttpClient client;
+    private final OkHttpClient client;
     private final Gson gson;
     private final RequestFactory factory;
     private final ErrorBuilder<AuthenticationException> authErrorBuilder;
@@ -317,7 +321,8 @@ public class AuthenticationAPIClient {
     /**
      * Log in a user using a phone number and a verification code received via SMS (Part of passwordless login flow)
      * The default scope used is 'openid'.
-     * Requires your Application to have the <b>Resource Owner</b> Legacy Grant Type enabled. See <a href="https://auth0.com/docs/clients/client-grant-types">Client Grant Types</a> to learn how to enable it.
+     * How the user is logged in depends on the {@link Auth0#isOIDCConformant()} flag. If this flag is set to true, your Application requires to have the <b>Passwordless OTP</b> Grant Type enabled.
+     * If this flag is set to false, the <b>Resource Owner</b> Legacy Grant Type must be enabled instead.
      * Example usage:
      * <pre>
      * {@code
@@ -332,25 +337,38 @@ public class AuthenticationAPIClient {
      * }
      * </pre>
      *
-     * @param phoneNumber      where the user received the verification code
-     * @param verificationCode sent by Auth0 via SMS
-     * @param connection       to end the passwordless authentication on
+     * @param phoneNumber       where the user received the verification code
+     * @param verificationCode  sent by Auth0 via SMS
+     * @param realmOrConnection to end the passwordless authentication on
      * @return a request to configure and start that will yield {@link Credentials}
      */
     @SuppressWarnings("WeakerAccess")
-    public AuthenticationRequest loginWithPhoneNumber(@NonNull String phoneNumber, @NonNull String verificationCode, @NonNull String connection) {
-        Map<String, Object> parameters = ParameterBuilder.newAuthenticationBuilder()
-                .set(USERNAME_KEY, phoneNumber)
-                .set(PASSWORD_KEY, verificationCode)
-                .setGrantType(GRANT_TYPE_PASSWORD)
+    public AuthenticationRequest loginWithPhoneNumber(@NonNull String phoneNumber, @NonNull String verificationCode, @NonNull String realmOrConnection) {
+        ParameterBuilder builder = ParameterBuilder.newAuthenticationBuilder()
                 .setClientId(getClientId())
-                .setConnection(connection)
-                .asDictionary();
-        return loginWithResourceOwner(parameters);
+                .set(USERNAME_KEY, phoneNumber);
+
+        if (auth0.isOIDCConformant()) {
+            Map<String, Object> parameters = builder
+                    .setGrantType(GRANT_TYPE_PASSWORDLESS_OTP)
+                    .set(ONE_TIME_PASSWORD_KEY, verificationCode)
+                    .setRealm(realmOrConnection)
+                    .asDictionary();
+            return loginWithToken(parameters);
+        } else {
+            Map<String, Object> parameters = builder
+                    .setGrantType(GRANT_TYPE_PASSWORD)
+                    .set(PASSWORD_KEY, verificationCode)
+                    .setConnection(realmOrConnection)
+                    .asDictionary();
+            return loginWithResourceOwner(parameters);
+        }
     }
 
     /**
      * Log in a user using a phone number and a verification code received via SMS (Part of passwordless login flow).
+     * How the user is logged in depends on the {@link Auth0#isOIDCConformant()} flag. If this flag is set to true, your Application requires to have the <b>Passwordless OTP</b> Grant Type enabled.
+     * If this flag is set to false, the <b>Resource Owner</b> Legacy Grant Type must be enabled instead.
      * By default it will try to authenticate using the "sms" connection.
      * Example usage:
      * <pre>
@@ -378,7 +396,8 @@ public class AuthenticationAPIClient {
     /**
      * Log in a user using an email and a verification code received via Email (Part of passwordless login flow).
      * The default scope used is 'openid'.
-     * Requires your Application to have the <b>Resource Owner</b> Legacy Grant Type enabled. See <a href="https://auth0.com/docs/clients/client-grant-types">Client Grant Types</a> to learn how to enable it.
+     * How the user is logged in depends on the {@link Auth0#isOIDCConformant()} flag. If this flag is set to true, your Application requires to have the <b>Passwordless OTP</b> Grant Type enabled.
+     * If this flag is set to false, the <b>Resource Owner</b> Legacy Grant Type must be enabled instead.
      * Example usage:
      * <pre>
      * {@code
@@ -393,26 +412,39 @@ public class AuthenticationAPIClient {
      * }
      * </pre>
      *
-     * @param email            where the user received the verification code
-     * @param verificationCode sent by Auth0 via Email
-     * @param connection       to end the passwordless authentication on
+     * @param email             where the user received the verification code
+     * @param verificationCode  sent by Auth0 via Email
+     * @param realmOrConnection to end the passwordless authentication on
      * @return a request to configure and start that will yield {@link Credentials}
      */
     @SuppressWarnings("WeakerAccess")
-    public AuthenticationRequest loginWithEmail(@NonNull String email, @NonNull String verificationCode, @NonNull String connection) {
-        Map<String, Object> parameters = ParameterBuilder.newAuthenticationBuilder()
-                .set(USERNAME_KEY, email)
-                .set(PASSWORD_KEY, verificationCode)
-                .setGrantType(GRANT_TYPE_PASSWORD)
+    public AuthenticationRequest loginWithEmail(@NonNull String email, @NonNull String verificationCode, @NonNull String realmOrConnection) {
+        ParameterBuilder builder = ParameterBuilder.newAuthenticationBuilder()
                 .setClientId(getClientId())
-                .setConnection(connection)
-                .asDictionary();
-        return loginWithResourceOwner(parameters);
+                .set(USERNAME_KEY, email);
+
+        if (auth0.isOIDCConformant()) {
+            Map<String, Object> parameters = builder
+                    .setGrantType(GRANT_TYPE_PASSWORDLESS_OTP)
+                    .set(ONE_TIME_PASSWORD_KEY, verificationCode)
+                    .setRealm(realmOrConnection)
+                    .asDictionary();
+            return loginWithToken(parameters);
+        } else {
+            Map<String, Object> parameters = builder
+                    .setGrantType(GRANT_TYPE_PASSWORD)
+                    .set(PASSWORD_KEY, verificationCode)
+                    .setConnection(realmOrConnection)
+                    .asDictionary();
+            return loginWithResourceOwner(parameters);
+        }
     }
 
     /**
      * Log in a user using an email and a verification code received via Email (Part of passwordless login flow)
      * By default it will try to authenticate using the "email" connection.
+     * How the user is logged in depends on the {@link Auth0#isOIDCConformant()} flag. If this flag is set to true, your Application requires to have the <b>Passwordless OTP</b> Grant Type enabled.
+     * If this flag is set to false, the <b>Resource Owner</b> Legacy Grant Type must be enabled instead.
      * Example usage:
      * <pre>
      * {@code
@@ -828,8 +860,9 @@ public class AuthenticationAPIClient {
     }
 
     /**
-     * Start a passwordless flow with an <a href="https://auth0.com/docs/api/authentication#get-code-or-link">Email</a>
-     * Requires your Application to have the <b>Resource Owner</b> Legacy Grant Type enabled. See <a href="https://auth0.com/docs/clients/client-grant-types">Client Grant Types</a> to learn how to enable it.
+     * Start a passwordless flow with an <a href="https://auth0.com/docs/api/authentication#get-code-or-link">Email</a>.
+     * How the user is logged in depends on the {@link Auth0#isOIDCConformant()} flag. If this flag is set to true, your Application requires to have the <b>Passwordless OTP</b> Grant Type enabled.
+     * If this flag is set to false, the <b>Resource Owner</b> Legacy Grant Type must be enabled instead.
      * Example usage:
      * <pre>
      * {@code
@@ -864,7 +897,8 @@ public class AuthenticationAPIClient {
     /**
      * Start a passwordless flow with an <a href="https://auth0.com/docs/api/authentication#get-code-or-link">Email</a>
      * By default it will try to authenticate using "email" connection.
-     * Requires your Application to have the <b>Resource Owner</b> Legacy Grant Type enabled. See <a href="https://auth0.com/docs/clients/client-grant-types">Client Grant Types</a> to learn how to enable it.
+     * How the user is logged in depends on the {@link Auth0#isOIDCConformant()} flag. If this flag is set to true, your Application requires to have the <b>Passwordless OTP</b> Grant Type enabled.
+     * If this flag is set to false, the <b>Resource Owner</b> Legacy Grant Type must be enabled instead.
      * Example usage:
      * <pre>
      * {@code
@@ -890,7 +924,8 @@ public class AuthenticationAPIClient {
 
     /**
      * Start a passwordless flow with a <a href="https://auth0.com/docs/api/authentication#get-code-or-link">SMS</a>
-     * Requires your Application to have the <b>Resource Owner</b> Legacy Grant Type enabled. See <a href="https://auth0.com/docs/clients/client-grant-types">Client Grant Types</a> to learn how to enable it.
+     * How the user is logged in depends on the {@link Auth0#isOIDCConformant()} flag. If this flag is set to true, your Application requires to have the <b>Passwordless OTP</b> Grant Type enabled.
+     * If this flag is set to false, the <b>Resource Owner</b> Legacy Grant Type must be enabled instead.
      * Example usage:
      * <pre>
      * {@code
@@ -924,7 +959,9 @@ public class AuthenticationAPIClient {
     /**
      * Start a passwordless flow with a <a href="https://auth0.com/docs/api/authentication#get-code-or-link">SMS</a>
      * By default it will try to authenticate using the "sms" connection.
-     * Requires your Application to have the <b>Resource Owner</b> Legacy Grant Type enabled. See <a href="https://auth0.com/docs/clients/client-grant-types">Client Grant Types</a> to learn how to enable it.
+     * How the user is logged in depends on the {@link Auth0#isOIDCConformant()} flag. If this flag is set to true, your Application requires to have the <b>Passwordless OTP</b> Grant Type enabled.
+     * If this flag is set to false, the <b>Resource Owner</b> Legacy Grant Type must be enabled instead.
+     * See <a href="https://auth0.com/docs/clients/client-grant-types">Client Grant Types</a> to learn how to enable it.
      * Example usage:
      * <pre>
      * {@code
@@ -1073,6 +1110,22 @@ public class AuthenticationAPIClient {
         ParameterizableRequest<Credentials, AuthenticationException> request = factory.POST(url, client, gson, Credentials.class, authErrorBuilder);
         request.addParameters(parameters);
         return new TokenRequest(request);
+    }
+
+    /**
+     * Creates a new Request to obtain the JSON Web Keys associated with the Auth0 account under the given domain.
+     * Only supports RSA keys used for signatures (Public Keys).
+     *
+     * @return a request to obtain the JSON Web Keys associated with this Auth0 account.
+     */
+    public Request<Map<String, PublicKey>, AuthenticationException> fetchJsonWebKeys() {
+        HttpUrl url = HttpUrl.parse(auth0.getDomainUrl()).newBuilder()
+                .addPathSegment(WELL_KNOWN_PATH)
+                .addPathSegment(JWKS_FILE_PATH)
+                .build();
+        TypeToken<Map<String, PublicKey>> jwksType = new TypeToken<Map<String, PublicKey>>() {
+        };
+        return factory.GET(url, client, gson, jwksType, authErrorBuilder);
     }
 
     private AuthenticationRequest loginWithToken(Map<String, Object> parameters) {

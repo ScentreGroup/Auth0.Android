@@ -66,6 +66,7 @@ public class Auth0Test {
     private static final String EU_DOMAIN = "samples.eu.auth0.com";
     private static final String AU_DOMAIN = "samples.au.auth0.com";
     private static final String OTHER_DOMAIN = "samples-test.other-subdomain.other.auth0.com";
+    private static final String CUSTOM_AUTHORIZE_URL = "https://authorize.url";
 
     @Before
     public void setUp() {
@@ -220,6 +221,15 @@ public class Auth0Test {
         assertThat(auth0.getClientId(), equalTo(CLIENT_ID));
         assertThat(HttpUrl.parse(auth0.getDomainUrl()), equalTo(HttpUrl.parse("https://samples.auth0.com")));
         assertThat(HttpUrl.parse(auth0.getConfigurationUrl()), equalTo(HttpUrl.parse("https://config.mydomain.com")));
+    }
+
+    @Test
+    public void shouldBuildWithCustomAuthorizeUrl() {
+        Auth0 auth0 = new Auth0(CLIENT_ID, DOMAIN, CONFIG_DOMAIN_CUSTOM, CUSTOM_AUTHORIZE_URL);
+        assertThat(auth0.getClientId(), equalTo(CLIENT_ID));
+        assertThat(HttpUrl.parse(auth0.getDomainUrl()), equalTo(HttpUrl.parse("https://samples.auth0.com")));
+        assertThat(HttpUrl.parse(auth0.getConfigurationUrl()), equalTo(HttpUrl.parse("https://config.mydomain.com")));
+        assertThat(HttpUrl.parse(auth0.getAuthorizeUrl()), equalTo(HttpUrl.parse("https://authorize.url")));
     }
 
     @Test

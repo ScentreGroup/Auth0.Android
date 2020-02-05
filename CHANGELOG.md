@@ -1,5 +1,51 @@
 # Change Log
 
+## [1.21.0](https://github.com/auth0/Auth0.Android/tree/1.21.0) (2020-01-29)
+[Full Changelog](https://github.com/auth0/Auth0.Android/compare/1.20.1...1.21.0)
+
+**Added**
+- Allow to customize the redirect URI / return to URL [\#279](https://github.com/auth0/Auth0.Android/pull/279) ([lbalmaceda](https://github.com/lbalmaceda))
+
+## [1.20.1](https://github.com/auth0/Auth0.Android/tree/1.20.1) (2020-01-10)
+[Full Changelog](https://github.com/auth0/Auth0.Android/compare/1.20.0...1.20.1)
+
+**Changed**
+- Update OSS Gradle plugin version [\#275](https://github.com/auth0/Auth0.Android/pull/275) ([lbalmaceda](https://github.com/lbalmaceda))
+
+**Removed**
+- Remove issued_at value check [\#274](https://github.com/auth0/Auth0.Android/pull/274) ([lbalmaceda](https://github.com/lbalmaceda))
+
+## [1.20.0](https://github.com/auth0/Auth0.Android/tree/1.20.0) (2019-12-23)
+[Full Changelog](https://github.com/auth0/Auth0.Android/compare/1.19.1...1.20.0)
+
+**Added**
+- Add OIDC passwordless  [\#271](https://github.com/auth0/Auth0.Android/pull/271) ([lbalmaceda](https://github.com/lbalmaceda))
+- Support fetching the JWKS [\#260](https://github.com/auth0/Auth0.Android/pull/260) ([lbalmaceda](https://github.com/lbalmaceda))
+
+**Fixed**
+- Use closeTo to still match with small differences [part 2] [\#272](https://github.com/auth0/Auth0.Android/pull/272) ([lbalmaceda](https://github.com/lbalmaceda))
+
+**Security**
+- Improve OIDC compliance [\#265](https://github.com/auth0/Auth0.Android/pull/265) ([lbalmaceda](https://github.com/lbalmaceda))
+
+## [1.19.1](https://github.com/auth0/Auth0.Android/tree/1.19.1) (2019-11-29)
+[Full Changelog](https://github.com/auth0/Auth0.Android/compare/1.19.0...1.19.1)
+
+**Fixed**
+- Fix CredentialsManager migration scenario [\#266](https://github.com/auth0/Auth0.Android/pull/266) ([lbalmaceda](https://github.com/lbalmaceda))
+
+## [1.19.0](https://github.com/auth0/Auth0.Android/tree/1.19.0) (2019-09-10)
+[Full Changelog](https://github.com/auth0/Auth0.Android/compare/1.18.0...1.19.0)
+
+**Changed**
+- Update CredentialManager classes to include IDToken expiration [\#254](https://github.com/auth0/Auth0.Android/pull/254) ([lbalmaceda](https://github.com/lbalmaceda))
+
+## [1.18.0](https://github.com/auth0/Auth0.Android/tree/1.18.0) (2019-07-26)
+[Full Changelog](https://github.com/auth0/Auth0.Android/compare/1.17.0...1.18.0)
+
+**Changed**
+- Update gradle android plugin and wrapper version [\#250](https://github.com/auth0/Auth0.Android/pull/250) ([lbalmaceda](https://github.com/lbalmaceda))
+
 ## [1.17.0](https://github.com/auth0/Auth0.Android/tree/1.17.0) (2019-06-28)
 [Full Changelog](https://github.com/auth0/Auth0.Android/compare/1.16.0...1.17.0)
 

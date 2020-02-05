@@ -29,6 +29,8 @@ import com.squareup.okhttp.mockwebserver.MockWebServer;
 import com.squareup.okhttp.mockwebserver.RecordedRequest;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class AuthenticationAPI {
 
@@ -122,12 +124,31 @@ public class AuthenticationAPI {
         return this;
     }
 
-    public AuthenticationAPI willReturnFailedLogin() {
+    public AuthenticationAPI willReturnInvalidRequest() {
         String json = "{\n" +
                 "  \"error\": \"invalid_request\",\n" +
                 "  \"error_description\": \"a random error\"\n" +
                 "}";
         server.enqueue(responseWithJSON(json, 400));
+        return this;
+    }
+
+    public AuthenticationAPI willReturnEmptyJsonWebKeys() {
+        String json = "{" +
+                "\"keys\": []" +
+                "}";
+        server.enqueue(responseWithJSON(json, 200));
+        return this;
+    }
+
+    public AuthenticationAPI willReturnValidJsonWebKeys() {
+        try {
+            byte[] encoded = Files.readAllBytes(Paths.get("src/test/resources/rsa_jwks.json"));
+            String json = new String(encoded);
+            server.enqueue(responseWithJSON(json, 200));
+        } catch (Exception ignored) {
+            System.out.println("File parsing error");
+        }
         return this;
     }
 
